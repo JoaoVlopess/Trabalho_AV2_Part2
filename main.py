@@ -16,6 +16,14 @@ def one_hot_encoding(y, num_classes):
     
     return target_matrix
 
+def criar_matriz_confusao(y_real, y_pred, n_classes=20):
+    # Inicializa a matriz com zeros
+    cm = np.zeros((n_classes, n_classes), dtype=int)
+    
+    # Preenche a matriz: linha é o real, coluna é o que o modelo previu
+    for real, pred in zip(y_real, y_pred):
+        cm[real, pred] += 1
+    return cm
 
 X_faces, y_faces, nomes = carregar_dataset_hierarquico("data/RecFac")
 d_completo = one_hot_encoding(y_faces, num_classes=20)
@@ -38,24 +46,24 @@ plt.show()
 
 # -----------------------------------------------------------------
 
-# meu_madaline = MadalineMulticlasse(n_classes=20, learning_rate=1e-5, n_epochs=1000)
+meu_madaline = MadalineMulticlasse(n_classes=20, learning_rate=1e-5, n_epochs=1000)
 
 
-# meu_madaline.fit(X_faces, d_completo)
+meu_madaline.fit(X_faces, d_completo)
 
 
-# y_pred = meu_madaline.predict(X_faces)
+y_pred = meu_madaline.predict(X_faces)
 
 
-# # Gráfico de Evolução do Erro (EQM) 
-# plt.figure(figsize=(10, 6))
-# plt.plot(meu_madaline.errors, color='blue', label='EQM Total')
-# plt.title("Desempenho do MADALINE Multiclasse (20 Pessoas)")
-# plt.xlabel("Época")
-# plt.ylabel("Erro Quadrático Médio (EQM)")
-# plt.grid(True, linestyle='--', alpha=0.7)
-# plt.legend()
-# plt.show()
+# Gráfico de Evolução do Erro (EQM) 
+plt.figure(figsize=(10, 6))
+plt.plot(meu_madaline.errors, color='blue', label='EQM Total')
+plt.title("Desempenho do MADALINE Multiclasse (20 Pessoas)")
+plt.xlabel("Época")
+plt.ylabel("Erro Quadrático Médio (EQM)")
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.legend()
+plt.show()
 
 
 
@@ -73,6 +81,11 @@ n_samples = X_faces.shape[0]
 n_treino = int(0.8 * n_samples)  # 80% das amostras 
 
 print(f"Iniciando Simulação de Monte Carlo com {R} rodadas (Manual)...")
+
+melhor_acc = -1
+pior_acc = 2.0
+dados_melhor = {}
+dados_pior = {}
 
 for r in range(R):
     # Embaralhar os dados 
@@ -106,6 +119,24 @@ for r in range(R):
     
     acc = np.mean(y_pred == y_test)
     acuracias_mlp.append(acc)
+
+    if acc > melhor_acc:
+        melhor_acc = acc
+        dados_melhor = {
+            'y_real': y_test, 
+            'y_pred': y_pred, 
+            'errors': modelo_mc.errors.copy(),
+            'rodada': r + 1
+        }
+
+        if acc < pior_acc:
+            pior_acc = acc
+            dados_pior = {
+                'y_real': y_test, 
+                'y_pred': y_pred, 
+                'errors': modelo_mc.errors.copy(),
+                'rodada': r + 1
+            }
     
     print(f"Rodada {r+1}: Acurácia = {acc*100:.2f}%")
 
@@ -119,3 +150,30 @@ print(f"Média de Acurácia: {media_acc * 100:.2f}%")
 print(f"Desvio Padrão: {desvio_acc * 100:.2f}%")
 print("="*35)
 
+def plotar_resultados_extremos(dados, titulo):
+    # Matriz de Confusão
+    cm = criar_matriz_confusao(dados['y_real'], dados['y_pred'])
+    
+    plt.figure(figsize=(12, 5))
+    
+    # Subplot 1 Heatmap
+    plt.subplot(1, 2, 1)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.title(f"Matriz de Confusão - {titulo}\n(Rodada {dados['rodada']})")
+    plt.xlabel("Predito")
+    plt.ylabel("Real")
+    
+    # Subplot 2: Curva de Aprendizado
+    plt.subplot(1, 2, 2)
+    plt.plot(dados['errors'])
+    plt.title(f"Curva de Aprendizado - {titulo}")
+    plt.xlabel("Épocas")
+    plt.ylabel("MSE")
+    plt.yscale('log')
+    
+    plt.tight_layout()
+    plt.show()
+
+# Chama para os dois casos
+plotar_resultados_extremos(dados_melhor, "MAIOR ACURÁCIA")
+plotar_resultados_extremos(dados_pior, "MENOR ACURÁCIA")
