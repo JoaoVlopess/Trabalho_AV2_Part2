@@ -38,24 +38,24 @@ plt.show()
 
 # -----------------------------------------------------------------
 
-meu_madaline = MadalineMulticlasse(n_classes=20, learning_rate=1e-5, n_epochs=1000)
+# meu_madaline = MadalineMulticlasse(n_classes=20, learning_rate=1e-5, n_epochs=1000)
 
 
-meu_madaline.fit(X_faces, d_completo)
+# meu_madaline.fit(X_faces, d_completo)
 
 
-y_pred = meu_madaline.predict(X_faces)
+# y_pred = meu_madaline.predict(X_faces)
 
 
-# Gráfico de Evolução do Erro (EQM) 
-plt.figure(figsize=(10, 6))
-plt.plot(meu_madaline.errors, color='blue', label='EQM Total')
-plt.title("Desempenho do MADALINE Multiclasse (20 Pessoas)")
-plt.xlabel("Época")
-plt.ylabel("Erro Quadrático Médio (EQM)")
-plt.grid(True, linestyle='--', alpha=0.7)
-plt.legend()
-plt.show()
+# # Gráfico de Evolução do Erro (EQM) 
+# plt.figure(figsize=(10, 6))
+# plt.plot(meu_madaline.errors, color='blue', label='EQM Total')
+# plt.title("Desempenho do MADALINE Multiclasse (20 Pessoas)")
+# plt.xlabel("Época")
+# plt.ylabel("Erro Quadrático Médio (EQM)")
+# plt.grid(True, linestyle='--', alpha=0.7)
+# plt.legend()
+# plt.show()
 
 
 
@@ -64,33 +64,58 @@ X = X_faces
 
 D = d_completo.T 
 
-# Configurações da Rede
-n_input = X.shape[1]  
-n_hidden = 25         
-n_output = 20          
-learning_rate = 0.0002  
-n_epochs = 1000      
-
-# Instância e Treino
-modelo_mlp = MLP(n_input, n_hidden, n_output, learning_rate, n_epochs)
-
-print("Iniciando o treinamento do MLP...")
-modelo_mlp.fit(X, D)
-
-# Gráfico de Erro
-plt.figure(figsize=(10, 6))
-plt.plot(modelo_mlp.errors)
-plt.title("Evolução do Erro (MSE) - MLP")
-plt.xlabel("Épocas")
-plt.ylabel("Erro Quadrático Médio")
-plt.yscale('log')
-plt.grid(True)
-plt.show()
 
 
-previsoes = modelo_mlp.predict(X)
-y_pred_mlp = np.argmax(previsoes, axis=1)
+# Configurações da Simulação
+R = 10
+acuracias_mlp = []
+n_samples = X_faces.shape[0]
+n_treino = int(0.8 * n_samples)  # 80% das amostras 
 
-acuracia = np.mean(y_pred_mlp == y_faces)
-print(f"Acurácia final no treino: {acuracia * 100:.2f}%")
+print(f"Iniciando Simulação de Monte Carlo com {R} rodadas (Manual)...")
+
+for r in range(R):
+    # Embaralhar os dados 
+    indices = np.arange(n_samples)
+    np.random.shuffle(indices)
+    
+    X_shuffled = X_faces[indices]
+    y_shuffled = y_faces[indices]
+    
+    # Particionamento 80/20 
+    X_train = X_shuffled[:n_treino]
+    y_train = y_shuffled[:n_treino]
+    
+    X_test = X_shuffled[n_treino:]
+    y_test = y_shuffled[n_treino:]
+    
+    # Gabarito One-Hot 
+    d_train_hot = one_hot_encoding(y_train, num_classes=20).T # Transposto para amostra x classe
+    
+    #  Reset do Modelo 
+
+    dimensao_entrada = X_train.shape[1]
+    modelo_mc = MLP(n_input=dimensao_entrada, n_hidden=25, n_output=20, learning_rate=0.001, n_epochs=500)
+    
+    # Treinamento 
+    modelo_mc.fit(X_train, d_train_hot)
+    
+    # Predição e Acurácia 
+    previsoes_raw = modelo_mc.predict(X_test)
+    y_pred = np.argmax(previsoes_raw, axis=1)
+    
+    acc = np.mean(y_pred == y_test)
+    acuracias_mlp.append(acc)
+    
+    print(f"Rodada {r+1}: Acurácia = {acc*100:.2f}%")
+
+# RESULTADOS FINAIS 
+media_acc = np.mean(acuracias_mlp)
+desvio_acc = np.std(acuracias_mlp)
+
+print("\n" + "="*35)
+print(f"RESULTADO FINAL MONTE CARLO (R={R})")
+print(f"Média de Acurácia: {media_acc * 100:.2f}%")
+print(f"Desvio Padrão: {desvio_acc * 100:.2f}%")
+print("="*35)
 
