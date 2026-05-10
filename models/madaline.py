@@ -1,9 +1,9 @@
 import numpy as np
-from models.adaline import adaline # Importando sua classe Adaline
+from models.adaline import adaline 
 
 class MadalineMulticlasse:
     def __init__(self, n_classes=20, learning_rate=1e-5, n_epochs=20):
-        self.n_classes = n_classes  # Aqui está o nome que você usou no init
+        self.n_classes = n_classes  
         self.n_epochs = n_epochs
         self.eta = learning_rate
         # Criamos a equipe de especialistas
